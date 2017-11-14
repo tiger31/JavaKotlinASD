@@ -16,7 +16,13 @@ public class BinaryTree<T extends Comparable<T>> extends AbstractSet<T> implemen
 
         Node<T> right = null;
 
+        Node<T> parent = null;
+
         Node(T value) {
+            this.value = value;
+        }
+        Node(Node<T> parent, T value) {
+            this.parent = parent;
             this.value = value;
         }
     }
@@ -39,10 +45,12 @@ public class BinaryTree<T extends Comparable<T>> extends AbstractSet<T> implemen
         else if (comparison < 0) {
             assert closest.left == null;
             closest.left = newNode;
+            newNode.parent = closest;
         }
         else {
             assert closest.right == null;
             closest.right = newNode;
+            newNode.parent = closest;
         }
         size++;
         return true;
@@ -61,7 +69,56 @@ public class BinaryTree<T extends Comparable<T>> extends AbstractSet<T> implemen
 
     @Override
     public boolean remove(Object o) {
-        throw new UnsupportedOperationException();
+        //Метод contains нет смысла использовать, т.к. при резульатате true придется еще раз искать тот же элемент
+        T t = (T) o;
+        Node<T> closest = find(t); //Находим элемент
+        //Проверяем, нужный ли это элемент или только близкий к нему
+        if (closest != null && t.compareTo(closest.value) == 0) {
+            if (closest.left == null && closest.right == null) {
+                if (closest.parent == null)
+                    root = null;
+                else {
+                    if (closest.parent.left == closest) closest.parent.left = null;
+                    else closest.parent.right = null;
+                }
+            } else if (closest.left == null || closest.right == null) {
+                Node<T> onlyChild = (closest.left == null) ? closest.right : closest.left;
+                if (closest.parent == null) {
+                    root = onlyChild;
+                    onlyChild.parent = null;
+                }
+                else {
+                    if (closest.parent.left == closest) closest.parent.left = onlyChild;
+                    else closest.parent.right = onlyChild;
+                    onlyChild.parent = closest.parent;
+                }
+            } else {
+                //Самое маленькое значение из тех, что больше заданного
+                //Берем его чтобы сохранить структуру дерева
+                Node<T> minSubNode = min(closest.right);
+                //Перезаписываем ссылку у родителя удаляемой ноды
+                if (closest.parent.left == closest) closest.parent.left = minSubNode;
+                else closest.parent.right = minSubNode;
+                //Убираем ссылки у прошлого родителя новой ноды
+                if (minSubNode.parent.left == minSubNode) minSubNode.parent.left = minSubNode.right;
+                else minSubNode.parent.right = minSubNode.right;
+                //Переписываем ссылки на дочерние ноды
+                minSubNode.right = closest.right;
+                if (closest.right != null) closest.right.parent = minSubNode;
+                minSubNode.left = closest.left;
+                if (closest.left != null) closest.left.parent = minSubNode;
+                //Заменяем родителя
+                minSubNode.parent = closest.parent;
+            }
+            return true;
+        } else
+            return false;
+    }
+
+    private Node<T> min(Node<T> start) {
+        if (start.left == null)
+            return start;
+        return min(start.left);
     }
 
     @Override
